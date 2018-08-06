@@ -1,0 +1,26 @@
+{
+  "name": "swipe-carousel",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/bootstrap-swipe-carousel.js",
+  "scripts": {
+    "test": "mocha -R spec --require test/helpers/setup.js --recursive test --exit"
+  },
+  "keywords": [
+    "js",
+    "bootstrap",
+    "carousel"
+  ],
+  "author": "Ardeshir Eshghi",
+  "license": "ISC",
+  "devDependencies": {
+    "bootstrap": "^4.0.0",
+    "chai": "^4.1.2",
+    "jquery": "^3.3.1",
+    "mocha": "^5.2.0",
+    "mocha-jsdom": "^2.0.0",
+    "popper.js": "^1.14.4",
+    "sinon": "^6.1.4",
+    "sinon-chai": "^3.2.0"
+  }
+}
