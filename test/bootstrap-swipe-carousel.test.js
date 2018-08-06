@@ -8,6 +8,8 @@ const sinon = require('sinon');
 chai.should();
 chai.use(sinonChai);
 
+window.$ = $;
+
 const { getSimpleCarouselMarkup, swipeLeft, swipeRight } = require('./helpers/utils');
 const BootstrapSwipeCarousel = require('../src/bootstrap-swipe-carousel');
 
@@ -104,6 +106,52 @@ describe('Bootstrap Swipe Carousel', () => {
           expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlideIndex);
           done();
         }, safeWaitTime);
+      });
+    });
+  });
+
+  describe('When disabled', () => {
+    it('should not change slide upon swiping', (done) => {
+      const carouselEl = $('.carousel');
+      const safeWaitTime = 200;
+      const swipeMovePixels = 3;
+      const currentSlide = 0;
+
+      carouselEl.carousel().swipeCarousel({
+        sensitivity: 'medium'
+      });
+
+      carouselEl.swipeCarousel('disable');
+
+      swipeLeft(carouselEl, swipeMovePixels).then(() => {
+        setTimeout(() => {
+          expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlide);
+          done();
+        }, safeWaitTime);
+      });
+    });
+
+    it('should change slide after re-enabling upon swiping', (done) => {
+      const carouselEl = $('.carousel');
+      const safeWaitTime = 200;
+      const swipeMovePixels = 3;
+      const currentSlide = 0;
+
+      carouselEl.carousel().swipeCarousel({
+        sensitivity: 'medium',
+        enabled: false
+      });
+
+      carouselEl.swipeCarousel('enable');
+
+      swipeLeft(carouselEl);
+
+      carouselEl.on('slid.bs.carousel', ({from, to}) => {
+        expect(from).to.eq(0);
+        expect(to).to.eq(1);
+
+        expect(carouselEl.find('.carousel-item.active').index()).to.eq(1);
+        done();
       });
     });
   });

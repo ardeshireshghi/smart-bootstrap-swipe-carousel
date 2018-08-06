@@ -1,14 +1,12 @@
-const $ = require('jquery');
-
-const BootstrapSwipeCarousel = module.exports = (($) => {
+const BootstrapSwipeCarousel = (($) => {
   const NAME = 'swipeCarousel';
   const CAROUSEL_DATA_KEY = 'bs.carousel.swipe2';
   const MIN_SPEED_TO_SLIDE = 200; // pixel per second
   const DEBOUNCE_TIMEOUT = 40; // Magic number (it works and avoids extra slides per taps)
 
   const shouldSlide = (deltaX, speed, threshold) => (
-    Math.abs(deltaX) >= threshold ||
-    speed > MIN_SPEED_TO_SLIDE
+    Math.abs(deltaX) >= threshold
+    || speed > MIN_SPEED_TO_SLIDE
   );
 
   class SwipeCarousel {
@@ -26,7 +24,7 @@ const BootstrapSwipeCarousel = module.exports = (($) => {
       this.handleCarouselSlideEnd = this.handleCarouselSlideEnd.bind(this);
 
       this.state = {
-        queue:[]
+        queue: []
       };
 
       if (this.enabled) {
@@ -90,20 +88,18 @@ const BootstrapSwipeCarousel = module.exports = (($) => {
       }
     }
 
-    handleCarouselSlideStart(e) {
-      const targetCarousel = $(e.target);
+    handleCarouselSlideStart() {
       const { state } = this;
 
       // Remove processed first item from the queue
       this.setState({
         sliding: true,
-        queue: state.queue.length ? state.queue.slice(1) : []
+        queue: state.queue.slice(1)
       });
     }
 
     handleCarouselSlideEnd(e) {
       const targetCarousel = $(e.target);
-      const { state } = this;
 
       this.setState({
         sliding: false
@@ -114,7 +110,7 @@ const BootstrapSwipeCarousel = module.exports = (($) => {
     }
 
     processCarouselSlideQueue(targetCarouselEl) {
-      const { queue = [] } = this.state;
+      const { queue } = this.state;
 
       if (queue.length > 0) {
         const [ itemToProcess ] = queue;
@@ -122,16 +118,16 @@ const BootstrapSwipeCarousel = module.exports = (($) => {
       }
     }
 
-    setState(newPartialState = { queue: [] } ) {
+    setState(newPartialState) {
       this.state = {
         ...this.state,
         ...newPartialState
-      }
+      };
     }
 
     enable() {
       this.carouselEl.on({
-        'pointerdown': this.handleTouchDown,
+        pointerdown: this.handleTouchDown,
         'slide.bs.carousel': this.handleCarouselSlideStart,
         'slid.bs.carousel': this.handleCarouselSlideEnd
       });
@@ -139,7 +135,7 @@ const BootstrapSwipeCarousel = module.exports = (($) => {
 
     disable() {
       this.carouselEl.off({
-        'pointerdown': this.handleTouchDown,
+        pointerdown: this.handleTouchDown,
         'slide.bs.carousel': this.handleCarouselSlideStart,
         'slid.bs.carousel': this.handleCarouselSlideEnd
       });
@@ -154,8 +150,8 @@ const BootstrapSwipeCarousel = module.exports = (($) => {
     }
   }
 
-  SwipeCarousel.jQueryModule = function(config) {
-    return this.each(function() {
+  SwipeCarousel.jQueryModule = function jQueryInterface(config) {
+    return this.each(function addModuleWrapper() {
       const swipeCarousel = $(this).data(CAROUSEL_DATA_KEY);
 
       if (typeof config === 'string' && swipeCarousel) {
@@ -167,10 +163,12 @@ const BootstrapSwipeCarousel = module.exports = (($) => {
         $(this).data(CAROUSEL_DATA_KEY, new SwipeCarousel($(this), config));
       }
     });
- };
+  };
 
   $.fn[NAME] = SwipeCarousel.jQueryModule;
   $.fn[NAME].Constructor = SwipeCarousel;
 
   return SwipeCarousel;
-})($);
+})(window.$);
+
+module.exports = BootstrapSwipeCarousel;

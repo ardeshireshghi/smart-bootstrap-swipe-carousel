@@ -4,7 +4,12 @@
   "description": "",
   "main": "dist/bootstrap-swipe-carousel.js",
   "scripts": {
-    "test": "mocha -R spec --require test/helpers/setup.js --recursive test --exit"
+    "test": "./node_modules/.bin/mocha -R spec --require test/helpers/setup.js --recursive test --exit",
+    "watch": "./node_modules/.bin/mocha -w -c -R spec --require test/helpers/setup.js --recursive test --exit",
+    "coverage": "./node_modules/.bin/babel-node node_modules/.bin/babel-istanbul cover node_modules/.bin/_mocha -- -R spec --require test/helpers/setup.js --recursive test --exit",
+    "build": "./scripts/build.sh",
+    "lint": "./node_modules/.bin/eslint src",
+    "lint:fix": "./node_modules/.bin/eslint --fix src"
   },
   "keywords": [
     "js",
@@ -12,15 +17,32 @@
     "carousel"
   ],
   "author": "Ardeshir Eshghi",
-  "license": "ISC",
+  "license": "GNU",
   "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-eslint": "^8.2.6",
+    "babel-istanbul": "^0.12.2",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-plugin-transform-require-ignore": "^0.1.1",
+    "babel-preset-env": "^1.7.0",
+    "babel-register": "^6.26.0",
+    "babel-watch": "^2.0.7",
+    "babelify": "^8.0.0",
     "bootstrap": "^4.0.0",
+    "browserify": "^16.2.2",
     "chai": "^4.1.2",
+    "eslint": "^5.3.0",
+    "eslint-config-airbnb-base": "^13.0.0",
+    "eslint-plugin-import": "^2.13.0",
+    "istanbul": "^0.4.5",
     "jquery": "^3.3.1",
     "mocha": "^5.2.0",
     "mocha-jsdom": "^2.0.0",
     "popper.js": "^1.14.4",
     "sinon": "^6.1.4",
-    "sinon-chai": "^3.2.0"
+    "sinon-chai": "^3.2.0",
+    "uglify-js": "^3.4.6"
   }
 }

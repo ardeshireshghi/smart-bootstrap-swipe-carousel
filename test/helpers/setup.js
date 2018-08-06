@@ -20,4 +20,14 @@ global.document = window.document;
 global.navigator = {
   userAgent: 'node.js',
 };
+
+global.localStorage = global.sessionStorage = ((store) => (['setItem', 'getItem', 'removeItem', 'clear']
+  .reduce((acc, cur) => ({
+    ...acc,
+    [cur]: cur === 'removeItem' ?
+      store.delete.bind(store) :
+      store[cur.replace(/Item/, '')].bind(store),
+    get length() { return store.size }
+  }), {})))(new Map());
+
 copyProps(window, global);
