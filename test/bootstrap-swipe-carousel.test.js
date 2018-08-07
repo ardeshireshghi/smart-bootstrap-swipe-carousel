@@ -1,17 +1,16 @@
-const bootstrap = require('bootstrap');
-const $ = require('jquery');
-const { expect } = require('chai');
-const chai = require('chai');
-const sinonChai = require('sinon-chai');
-const sinon = require('sinon');
+import bootstrap from 'bootstrap';
+import $ from 'jquery';
+import chai, { expect } from 'chai';
+import sinonChai from 'sinon-chai';
+import sinon from 'sinon';
+
+import { getSimpleCarouselMarkup, swipeLeft, swipeRight, wait } from './helpers/utils';
 
 chai.should();
 chai.use(sinonChai);
 
-window.$ = $;
-
-const { getSimpleCarouselMarkup, swipeLeft, swipeRight } = require('./helpers/utils');
-const BootstrapSwipeCarousel = require('../src/bootstrap-swipe-carousel');
+// Import carousel module
+import BootstrapSwipeCarousel from'../src/bootstrap-swipe-carousel';
 
 describe('Bootstrap Swipe Carousel', () => {
   beforeEach(() => {
@@ -43,7 +42,7 @@ describe('Bootstrap Swipe Carousel', () => {
       });
     });
 
-    it('should not go to next slide when swipe is less than Threshold', (done) => {
+    it('should not go to next slide when swipe is less than Threshold', async () => {
       const carouselEl = $('.carousel');
       const safeWaitTime = 200;
       const swipeMovePixels = 3;
@@ -53,12 +52,10 @@ describe('Bootstrap Swipe Carousel', () => {
         sensitivity: 'medium' // Threshold is 8 pixels
       });
 
-      swipeLeft(carouselEl, swipeMovePixels).then(() => {
-        setTimeout(() => {
-          expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlide);
-          done();
-        }, safeWaitTime);
-      });
+      await swipeLeft(carouselEl, swipeMovePixels);
+      await wait(safeWaitTime);
+
+      expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlide);
     });
   });
 
@@ -85,7 +82,7 @@ describe('Bootstrap Swipe Carousel', () => {
       });
     });
 
-    it('should stay on slide 3 when swipe is less than Threshold', (done) => {
+    it('should stay on slide 3 when swipe is less than Threshold', async () => {
       const currentSlideIndex = 2;
 
       $('body').html(getSimpleCarouselMarkup({
@@ -101,17 +98,15 @@ describe('Bootstrap Swipe Carousel', () => {
         sensitivity: 'medium' // Threshold is 8 pixels
       });
 
-      swipeRight(carouselEl, swipeMovePixels).then(() => {
-        setTimeout(() => {
-          expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlideIndex);
-          done();
-        }, safeWaitTime);
-      });
+      await swipeRight(carouselEl, swipeMovePixels);
+      await wait(safeWaitTime);
+
+      expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlideIndex);
     });
   });
 
   describe('When disabled', () => {
-    it('should not change slide upon swiping', (done) => {
+    it('should not change slide upon swiping', async () => {
       const carouselEl = $('.carousel');
       const safeWaitTime = 200;
       const swipeMovePixels = 3;
@@ -123,12 +118,9 @@ describe('Bootstrap Swipe Carousel', () => {
 
       carouselEl.swipeCarousel('disable');
 
-      swipeLeft(carouselEl, swipeMovePixels).then(() => {
-        setTimeout(() => {
-          expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlide);
-          done();
-        }, safeWaitTime);
-      });
+      await swipeLeft(carouselEl, swipeMovePixels);
+      await wait(safeWaitTime);
+      expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlide);
     });
 
     it('should change slide after re-enabling upon swiping', (done) => {
@@ -156,6 +148,49 @@ describe('Bootstrap Swipe Carousel', () => {
     });
   });
 
+  describe('When enabled', () => {
+    it('should not bind more event listeners', async () => {
+      const carouselEl = $('.carousel');
+      const safeWaitTime = 200;
+      const swipeMovePixels = 3;
+      let eventSpy;
+
+      carouselEl.carousel();
+
+      eventSpy = sinon.spy($.fn, 'on');
+
+      carouselEl.swipeCarousel({
+        sensitivity: 'medium'
+      });
+
+      carouselEl.swipeCarousel('enable');
+
+      await wait(safeWaitTime);
+
+      expect(eventSpy).to.have.been.calledOnce;
+      $.fn.on.restore();
+    });
+
+    it('should not change slide after disabling', async () => {
+      const carouselEl = $('.carousel');
+      const safeWaitTime = 500;
+      const swipeMovePixels = 3;
+      const currentSlide = 0;
+
+      const slideChangeHandler = sinon.spy();
+      carouselEl.carousel().swipeCarousel({
+        sensitivity: 'medium'
+      });
+
+      carouselEl.on('slid.bs.carousel', slideChangeHandler);
+      carouselEl.swipeCarousel('disable');
+
+      await swipeLeft(carouselEl, swipeMovePixels);
+      await wait(safeWaitTime);
+      expect(slideChangeHandler).to.not.been.called;
+    });
+  });
+
   describe('Multiple swipes', () => {
     it('should go from slide 1 to 3 after 2 swipe left with enough delay', (done) => {
       $('body').html(getSimpleCarouselMarkup({
@@ -163,51 +198,58 @@ describe('Bootstrap Swipe Carousel', () => {
         currentSlide: 1
       }));
 
-      let slideFinishCalls = 0;
-
+      let slideFinishEventCallCount = 0;
       const carouselEl = $('.carousel');
+
       carouselEl.carousel().swipeCarousel({
         sensitivity: 'medium' // Threshold is 8 pixels
       });
 
       const slideChangeHandlerSpy = sinon.spy();
 
-      carouselEl.on('slid.bs.carousel', slideChangeHandlerSpy);
-      carouselEl.on('slid.bs.carousel',() => {
-        slideFinishCalls += 1;
+      const checkSlideChangeSpy = () => {
+        expect(slideChangeHandlerSpy.calledTwice).to.be.true;
 
-        if (slideFinishCalls === 2) {
-          expect(slideChangeHandlerSpy.calledTwice).to.be.true;
-
-          expect(slideChangeHandlerSpy).to.have.been.calledWithMatch({
+        const expectedArgsPerCall = [
+          {
             from: 0,
             to: 1
-          });
-
-          expect(slideChangeHandlerSpy).to.have.been.calledWithMatch({
+          },
+          {
             from: 1,
             to: 2
-          });
+          }
+        ];
 
+        expectedArgsPerCall.forEach(({from, to}) => {
+          expect(slideChangeHandlerSpy).to.have.been.calledWithMatch({from, to});
+        });
+      };
+
+      carouselEl.on('slid.bs.carousel', slideChangeHandlerSpy);
+      carouselEl.on('slid.bs.carousel', () => {
+        slideFinishEventCallCount += 1;
+
+        if (slideFinishEventCallCount === 2) {
+          checkSlideChangeSpy();
           done();
         }
       });
 
       // First swipe
-      swipeLeft(carouselEl).then(() => {
-        // Wait to bypass the debouncer and second swipe
-        setTimeout(() => swipeLeft(carouselEl), BootstrapSwipeCarousel.DEBOUNCE_WAIT + 10);
-      });
+      swipeLeft(carouselEl)
+        .then(() => wait(BootstrapSwipeCarousel.DEBOUNCE_WAIT + 10))
+        .then(() => swipeLeft(carouselEl));
     });
 
-    it('should only go from slide 1 to 2 after 2 swipe left with no delay', (done) => {
+    it('should only go from slide 1 to 2 after 2 swipe left with no delay', async () => {
       $('body').html(getSimpleCarouselMarkup({
         slides: 3,
         currentSlide: 1
       }));
 
       const longEnoughWait = 1000;
-      let slideFinishCalls = 0;
+      let slideFinishEventCallCount = 0;
 
       const carouselEl = $('.carousel');
       carouselEl.carousel().swipeCarousel({
@@ -217,20 +259,18 @@ describe('Bootstrap Swipe Carousel', () => {
       const slideChangeHandlerSpy = sinon.spy();
 
       carouselEl.on('slid.bs.carousel', slideChangeHandlerSpy);
-      setTimeout(() => {
-        expect(slideChangeHandlerSpy.calledOnce).to.be.true;
-        expect(slideChangeHandlerSpy).to.have.been.calledWithMatch({
-          from: 0,
-          to: 1
-        });
-
-        done();
-
-      }, longEnoughWait);
 
       // First swipe and second no delay
-      swipeLeft(carouselEl)
-        .then(() => { swipeLeft(carouselEl) });
+      await swipeLeft(carouselEl);
+      await swipeLeft(carouselEl);
+
+      await wait(longEnoughWait);
+
+      expect(slideChangeHandlerSpy.calledOnce).to.be.true;
+      expect(slideChangeHandlerSpy).to.have.been.calledWithMatch({
+        from: 0,
+        to: 1
+      });
     });
   });
 });

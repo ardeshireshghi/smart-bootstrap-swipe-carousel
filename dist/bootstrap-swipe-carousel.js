@@ -1,5 +1,10 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+(function (global){
 'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
@@ -7,11 +12,17 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _jquery = (typeof window !== "undefined" ? window['$'] : typeof global !== "undefined" ? global['$'] : null);
+
+var _jquery2 = _interopRequireDefault(_jquery);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var BootstrapSwipeCarousel = function ($) {
+var BootstrapSwipeCarousel = function () {
   var NAME = 'swipeCarousel';
   var CAROUSEL_DATA_KEY = 'bs.carousel.swipe2';
   var MIN_SPEED_TO_SLIDE = 200; // pixel per second
@@ -33,8 +44,6 @@ var BootstrapSwipeCarousel = function ($) {
 
       this.carouselEl = carouselEl;
       this.sensitivity = sensitivity;
-      this.enabled = enabled;
-
       this.threshold = this.sensitivityToThresholdToSlide[sensitivity];
 
       // We share these properties assuming we swipe on carousel at a given time
@@ -44,21 +53,36 @@ var BootstrapSwipeCarousel = function ($) {
       this.handleCarouselSlideEnd = this.handleCarouselSlideEnd.bind(this);
 
       this.state = {
-        queue: []
+        queue: [],
+        enabled: false
       };
 
-      if (this.enabled) {
-        this.enable();
-      }
+      this.initialise(enabled);
     }
 
     _createClass(SwipeCarousel, [{
+      key: 'initialise',
+      value: function initialise(enabled) {
+        if (enabled) {
+          this.enable();
+        }
+      }
+    }, {
+      key: 'toggleEnabledState',
+      value: function toggleEnabledState() {
+        var enabled = this.state.enabled;
+
+        this.setState({
+          enabled: !enabled
+        });
+      }
+    }, {
       key: 'handleTouchMove',
       value: function handleTouchMove(e) {
         var _this = this;
 
         var event = e.originalEvent;
-        var targetCarousel = $(e.currentTarget);
+        var targetCarousel = (0, _jquery2.default)(e.currentTarget);
 
         if (event.pointerType === 'touch') {
           var deltaX = event.clientX - this.startX;
@@ -94,7 +118,7 @@ var BootstrapSwipeCarousel = function ($) {
       key: 'handleTouchDown',
       value: function handleTouchDown(e) {
         var event = e.originalEvent;
-        var targetCarousel = $(e.currentTarget);
+        var targetCarousel = (0, _jquery2.default)(e.currentTarget);
 
         if (event.pointerType === 'touch') {
           this.startX = event.clientX;
@@ -118,7 +142,7 @@ var BootstrapSwipeCarousel = function ($) {
     }, {
       key: 'handleCarouselSlideEnd',
       value: function handleCarouselSlideEnd(e) {
-        var targetCarousel = $(e.target);
+        var targetCarousel = (0, _jquery2.default)(e.target);
 
         this.setState({
           sliding: false
@@ -148,20 +172,28 @@ var BootstrapSwipeCarousel = function ($) {
     }, {
       key: 'enable',
       value: function enable() {
-        this.carouselEl.on({
-          pointerdown: this.handleTouchDown,
-          'slide.bs.carousel': this.handleCarouselSlideStart,
-          'slid.bs.carousel': this.handleCarouselSlideEnd
-        });
+        if (!this.state.enabled) {
+          this.carouselEl.on({
+            pointerdown: this.handleTouchDown,
+            'slide.bs.carousel': this.handleCarouselSlideStart,
+            'slid.bs.carousel': this.handleCarouselSlideEnd
+          });
+
+          this.toggleEnabledState();
+        }
       }
     }, {
       key: 'disable',
       value: function disable() {
-        this.carouselEl.off({
-          pointerdown: this.handleTouchDown,
-          'slide.bs.carousel': this.handleCarouselSlideStart,
-          'slid.bs.carousel': this.handleCarouselSlideEnd
-        });
+        if (this.state.enabled) {
+          this.carouselEl.off({
+            pointerdown: this.handleTouchDown,
+            'slide.bs.carousel': this.handleCarouselSlideStart,
+            'slid.bs.carousel': this.handleCarouselSlideEnd
+          });
+
+          this.toggleEnabledState();
+        }
       }
     }, {
       key: 'sensitivityToThresholdToSlide',
@@ -189,7 +221,7 @@ var BootstrapSwipeCarousel = function ($) {
 
   SwipeCarousel.jQueryModule = function jQueryInterface(config) {
     return this.each(function addModuleWrapper() {
-      var swipeCarousel = $(this).data(CAROUSEL_DATA_KEY);
+      var swipeCarousel = (0, _jquery2.default)(this).data(CAROUSEL_DATA_KEY);
 
       if (typeof config === 'string' && swipeCarousel) {
         var action = config;
@@ -197,17 +229,18 @@ var BootstrapSwipeCarousel = function ($) {
           swipeCarousel[action]();
         }
       } else if (!swipeCarousel) {
-        $(this).data(CAROUSEL_DATA_KEY, new SwipeCarousel($(this), config));
+        (0, _jquery2.default)(this).data(CAROUSEL_DATA_KEY, new SwipeCarousel((0, _jquery2.default)(this), config));
       }
     });
   };
 
-  $.fn[NAME] = SwipeCarousel.jQueryModule;
-  $.fn[NAME].Constructor = SwipeCarousel;
+  _jquery2.default.fn[NAME] = SwipeCarousel.jQueryModule;
+  _jquery2.default.fn[NAME].Constructor = SwipeCarousel;
 
   return SwipeCarousel;
-}(window.$);
+}();
 
-module.exports = BootstrapSwipeCarousel;
+exports.default = BootstrapSwipeCarousel;
 
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}]},{},[1]);

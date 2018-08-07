@@ -1,6 +1,7 @@
-const $ = require('jquery');
+import 'babel-polyfill';
+import $ from 'jquery';
 
-const swipeEvent = (type, carouselEl, swipeLength = 20) => {
+const swipeEvent = async (type, carouselEl, swipeLength = 20) => {
   const startPos = 100;
   const humanSwipeDuration = 50; // milliseconds
 
@@ -20,19 +21,18 @@ const swipeEvent = (type, carouselEl, swipeLength = 20) => {
   }});
 
   carouselEl.trigger(fakePointerDownEvent);
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      carouselEl.trigger(fakePointerMoveEvent);
-      resolve();
-    }, humanSwipeDuration);
-  });
+  await wait(humanSwipeDuration);
+  return carouselEl.trigger(fakePointerMoveEvent);
 };
 
-exports.swipeLeft = swipeEvent.bind(null, 'left');
-exports.swipeRight = swipeEvent.bind(null, 'right');
+export const swipeLeft = swipeEvent.bind(null, 'left');
+export const swipeRight = swipeEvent.bind(null, 'right');
 
-exports.getSimpleCarouselMarkup = ({ slides = 3, currentSlide = 1 } = {}) => {
+export const wait = async (milliseconds) => {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+};
+
+export const getSimpleCarouselMarkup = ({ slides = 3, currentSlide = 1 } = {}) => {
   const carouselHTML = `<div id="carouselExampleSlidesOnly" \
   class="carousel slide" data-ride="carousel">
   <div class="carousel-inner">`;

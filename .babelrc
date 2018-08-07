@@ -10,12 +10,6 @@
     ]
   ],
   "plugins": [
-    [
-      "babel-plugin-transform-require-ignore",
-      {
-        "extensions": [".js"]
-      }
-    ],
     "transform-object-rest-spread",
     "transform-class-properties"
   ]

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -eo pipefail
 
 BROWSERIFY="./node_modules/.bin/browserify"
 UGLIFY="./node_modules/.bin/uglifyjs"
@@ -16,9 +16,17 @@ minify() {
   cat "$ARTIFACT" | "$UGLIFY" > "$MIN_ARTIFACT"
 }
 
+report() {
+  echo "┌──────────────────────────────┐"
+  echo "│ Build Finished successfully! │"
+  echo "└──────────────────────────────┘"
+  echo -e "\\nCreated artifacts: \\n\\n$ARTIFACT\\n$MIN_ARTIFACT\\n"
+}
+
 main() {
   dist
   minify
+  report
 }
 
 main "$@"

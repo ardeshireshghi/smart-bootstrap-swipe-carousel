@@ -1,4 +1,6 @@
-const BootstrapSwipeCarousel = (($) => {
+import $ from 'jquery';
+
+const BootstrapSwipeCarousel = (() => {
   const NAME = 'swipeCarousel';
   const CAROUSEL_DATA_KEY = 'bs.carousel.swipe2';
   const MIN_SPEED_TO_SLIDE = 200; // pixel per second
@@ -10,37 +12,21 @@ const BootstrapSwipeCarousel = (($) => {
   );
 
   class SwipeCarousel {
-    constructor(carouselEl, { sensitivity = 'medium', enabled = true } = {}) {
-      this.carouselEl = carouselEl;
-      this.sensitivity = sensitivity;
-      this.enabled = enabled;
+    handleTouchDown = (e) => {
+      const event = e.originalEvent;
+      const targetCarousel = $(e.currentTarget);
 
-      this.threshold = this.sensitivityToThresholdToSlide[sensitivity];
+      if (event.pointerType === 'touch') {
+        this.startX = event.clientX;
+        this.startTime = Date.now();
 
-      // We share these properties assuming we swipe on carousel at a given time
-      this.handleTouchMove = this.handleTouchMove.bind(this);
-      this.handleTouchDown = this.handleTouchDown.bind(this);
-      this.handleCarouselSlideStart = this.handleCarouselSlideStart.bind(this);
-      this.handleCarouselSlideEnd = this.handleCarouselSlideEnd.bind(this);
-
-      this.state = {
-        queue: []
-      };
-
-      if (this.enabled) {
-        this.enable();
+        targetCarousel
+          .off('pointermove', this.handleTouchMove)
+          .on('pointermove', this.handleTouchMove);
       }
     }
 
-    get sensitivityToThresholdToSlide() {
-      return {
-        low: 16,
-        medium: 8,
-        high: 4
-      };
-    }
-
-    handleTouchMove(e) {
+    handleTouchMove = (e) => {
       const event = e.originalEvent;
       const targetCarousel = $(e.currentTarget);
 
@@ -74,21 +60,7 @@ const BootstrapSwipeCarousel = (($) => {
       }
     }
 
-    handleTouchDown(e) {
-      const event = e.originalEvent;
-      const targetCarousel = $(e.currentTarget);
-
-      if (event.pointerType === 'touch') {
-        this.startX = event.clientX;
-        this.startTime = Date.now();
-
-        targetCarousel
-          .off('pointermove', this.handleTouchMove)
-          .on('pointermove', this.handleTouchMove);
-      }
-    }
-
-    handleCarouselSlideStart() {
+    handleCarouselSlideStart = () => {
       const { state } = this;
 
       // Remove processed first item from the queue
@@ -98,7 +70,7 @@ const BootstrapSwipeCarousel = (($) => {
       });
     }
 
-    handleCarouselSlideEnd(e) {
+    handleCarouselSlideEnd = (e) => {
       const targetCarousel = $(e.target);
 
       this.setState({
@@ -107,6 +79,40 @@ const BootstrapSwipeCarousel = (($) => {
 
       // Check the queue in case more slides needs to happen
       this.processCarouselSlideQueue(targetCarousel);
+    }
+
+    constructor(carouselEl, { sensitivity = 'medium', enabled = true } = {}) {
+      this.carouselEl = carouselEl;
+      this.sensitivity = sensitivity;
+      this.threshold = this.sensitivityToThresholdToSlide[sensitivity];
+
+      this.state = {
+        queue: [],
+        enabled: false
+      };
+
+      this.initialise(enabled);
+    }
+
+    initialise(enabled) {
+      if (enabled) {
+        this.enable();
+      }
+    }
+
+    toggleEnabledState() {
+      const { enabled } = this.state;
+      this.setState({
+        enabled: !enabled
+      });
+    }
+
+    get sensitivityToThresholdToSlide() {
+      return {
+        low: 16,
+        medium: 8,
+        high: 4
+      };
     }
 
     processCarouselSlideQueue(targetCarouselEl) {
@@ -126,19 +132,27 @@ const BootstrapSwipeCarousel = (($) => {
     }
 
     enable() {
-      this.carouselEl.on({
-        pointerdown: this.handleTouchDown,
-        'slide.bs.carousel': this.handleCarouselSlideStart,
-        'slid.bs.carousel': this.handleCarouselSlideEnd
-      });
+      if (!this.state.enabled) {
+        this.carouselEl.on({
+          pointerdown: this.handleTouchDown,
+          'slide.bs.carousel': this.handleCarouselSlideStart,
+          'slid.bs.carousel': this.handleCarouselSlideEnd
+        });
+
+        this.toggleEnabledState();
+      }
     }
 
     disable() {
-      this.carouselEl.off({
-        pointerdown: this.handleTouchDown,
-        'slide.bs.carousel': this.handleCarouselSlideStart,
-        'slid.bs.carousel': this.handleCarouselSlideEnd
-      });
+      if (this.state.enabled) {
+        this.carouselEl.off({
+          pointerdown: this.handleTouchDown,
+          'slide.bs.carousel': this.handleCarouselSlideStart,
+          'slid.bs.carousel': this.handleCarouselSlideEnd
+        });
+
+        this.toggleEnabledState();
+      }
     }
 
     static get CAROUSEL_DATA_KEY() {
@@ -169,6 +183,6 @@ const BootstrapSwipeCarousel = (($) => {
   $.fn[NAME].Constructor = SwipeCarousel;
 
   return SwipeCarousel;
-})(window.$);
+})();
 
-module.exports = BootstrapSwipeCarousel;
+export default BootstrapSwipeCarousel;
