@@ -3,12 +3,11 @@ import $ from 'jquery';
 const BootstrapSwipeCarousel = (() => {
   const NAME = 'swipeCarousel';
   const CAROUSEL_DATA_KEY = 'bs.carousel.swipe2';
-  const MIN_SPEED_TO_SLIDE = 200; // pixel per second
+  const MIN_SPEED_TO_SLIDE = 300; // pixel per second
   const DEBOUNCE_TIMEOUT = 40; // Magic number (it works and avoids extra slides per taps)
 
   const shouldSlide = (deltaX, speed, threshold) => (
-    Math.abs(deltaX) >= threshold
-    || speed > MIN_SPEED_TO_SLIDE
+    speed > MIN_SPEED_TO_SLIDE
   );
 
   class SwipeCarousel {
@@ -21,44 +20,147 @@ const BootstrapSwipeCarousel = (() => {
         this.startTime = Date.now();
 
         targetCarousel
-          .off('pointermove', this.handleTouchMove)
-          .on('pointermove', this.handleTouchMove);
+          .off('touchmove', this.handleTouchMove)
+          .on('touchmove', this.handleTouchMove)
+          .off('touchend', this.handleTouchUp)
+          .one('touchend', this.handleTouchUp);
+      }
+    };
+
+    handleTouchUp = (e) => {
+      console.log('Touchend', e.touches);
+
+      if (!this.debounceTimer && !this.state.sliding) {
+        const activeSlideEl = this.activeSlideEl || this.carouselEl.find('.carousel-item.active');
+        const width = activeSlideEl.outerWidth();
+        const index = activeSlideEl.index();
+
+        const transformX = -1 * index * width;
+
+        this.carouselInnerEl.css({
+          transform: `translateX(${transformX}px)`
+        });
       }
     }
 
+    updateCarouselStyle = () => {
+      this.carouselEl.eq(0).data('bs.carousel')._config.interval = 500000;
+
+      const totalWidth = this.carouselEl.find('.carousel-item')
+        .map((index, el) => $(el).outerWidth())
+        .toArray()
+        .reduce((acc, current) => acc + current, 0);
+
+      this.carouselEl.css('overflow', 'hidden');
+      this.carouselEl.find('.carousel-item')
+        .each((index, el) => {
+          $(el).css({
+            display: 'block',
+            float: 'left',
+            width: $(el).outerWidth()
+          });
+        });
+
+      this.carouselEl.find('.carousel-inner')
+        .width(totalWidth)
+        .css({
+          overflow: 'auto'
+        });
+
+      this.setState({
+        carouselStyleUpdated: true
+      });
+    };
+
+    resetCarouselStyle = () => {
+      this.carouselEl.css('overflow', '');
+      this.carouselEl.find('.carousel-item')
+        .each((index, el) => {
+          $(el).css({
+            display: '',
+            float: '',
+            width: ''
+          });
+        });
+
+      this.carouselEl.find('.carousel-inner')
+        .width('auto')
+        .css({
+          overflow: ''
+        });
+
+      this.setState({
+        carouselStyleUpdated: false
+      });
+
+      this.carouselInnerEl.css({
+        transform: 'none'
+      });
+    };
+
     handleTouchMove = (e) => {
-      const event = e.originalEvent;
+      const event = e.changedTouches[0];
       const targetCarousel = $(e.currentTarget);
 
-      if (event.pointerType === 'touch') {
-        const deltaX = event.clientX - this.startX;
-        const timeElapsedMilliSeconds = Math.max(Date.now() - this.startTime, 1);
-        const speedPixelPerSecond = (Math.abs(deltaX) / timeElapsedMilliSeconds) * 1000;
+      const deltaX = event.clientX - this.startX;
+      const timeElapsedMilliSeconds = Math.max(Date.now() - this.startTime, 1);
+      const speedPixelPerSecond = (Math.abs(deltaX) / timeElapsedMilliSeconds) * 1000;
 
-        if (shouldSlide(deltaX, speedPixelPerSecond, this.threshold)) {
+      console.log('Touch move triggered', e.currentTarget, deltaX, speedPixelPerSecond);
+
+      if (!this.state.carouselStyleUpdated) {
+        this.updateCarouselStyle();
+      }
+
+      const currentTransform = this.carouselInnerEl.css('transform');
+      let transformX;
+
+      const activeSlideEl = this.activeSlideEl || this.carouselEl.find('.carousel-item.active');
+      const width = activeSlideEl.outerWidth();
+      const index = activeSlideEl.index();
+
+      if (currentTransform !== 'none') {
+        transformX = parseFloat(currentTransform.split(/[()]/)[1].replace(/\s/g, '').split(',')[4]);
+      } else {
+        transformX = -1 * index * width;
+      }
+
+      this.carouselInnerEl.css({
+        transform: `translateX(${transformX + (deltaX / 12)}px)`
+      });
+
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+      }
+
+      if (shouldSlide(deltaX, speedPixelPerSecond, this.threshold)
+        || Math.abs(transformX - (index * width)) > 100) {
+
+        this.debounceTimer = setTimeout(() => {
           const { state } = this;
           const carouselAction = deltaX > 0 ? 'prev' : 'next';
 
-          if (this.debounceTimer) {
-            clearTimeout(this.debounceTimer);
-          }
+          console.log('debouncer triggered');
+          // Reset pointer move event waiting for next touch event
+          targetCarousel.off('touchmove', this.handleTouchMove);
 
-          this.debounceTimer = setTimeout(() => {
-            // Reset pointer move event waiting for next touch event
-            targetCarousel.off('pointermove', this.handleTouchMove);
+          this.resetCarouselStyle();
 
-            // Update state with new action
-            this.setState({
-              queue: [...state.queue, {
-                action: carouselAction
-              }]
-            });
+          // Update state with new action
+          this.setState({
+            queue: [...state.queue, {
+              action: carouselAction
+            }]
+          });
 
-            this.processCarouselSlideQueue(targetCarousel);
-          }, DEBOUNCE_TIMEOUT);
-        }
+          clearTimeout(this.debounceTimer);
+          this.debounceTimer = null;
+          this.processCarouselSlideQueue(targetCarousel);
+        }, DEBOUNCE_TIMEOUT);
+      } else {
       }
-    }
+
+    };
 
     handleCarouselSlideStart = () => {
       const { state } = this;
@@ -68,7 +170,7 @@ const BootstrapSwipeCarousel = (() => {
         sliding: true,
         queue: state.queue.slice(1)
       });
-    }
+    };
 
     handleCarouselSlideEnd = (e) => {
       const targetCarousel = $(e.target);
@@ -77,12 +179,15 @@ const BootstrapSwipeCarousel = (() => {
         sliding: false
       });
 
+      this.activeSlideEl = this.carouselEl.find('.carousel-item').eq(e.to);
+
       // Check the queue in case more slides needs to happen
       this.processCarouselSlideQueue(targetCarousel);
-    }
+    };
 
     constructor(carouselEl, { sensitivity = 'medium', enabled = true } = {}) {
       this.carouselEl = carouselEl;
+      this.carouselInnerEl = this.carouselEl.find('.carousel-inner');
       this.sensitivity = sensitivity;
       this.threshold = this.sensitivityToThresholdToSlide[sensitivity];
 
@@ -109,9 +214,9 @@ const BootstrapSwipeCarousel = (() => {
 
     get sensitivityToThresholdToSlide() {
       return {
-        low: 16,
-        medium: 8,
-        high: 4
+        low: 25,
+        medium: 50,
+        high: 100
       };
     }
 
