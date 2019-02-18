@@ -11,14 +11,22 @@ const BootstrapSwipeCarousel = (() => {
     || speed > MIN_SPEED_TO_SLIDE
   );
 
+  const hasPointerEvents = () => ('PointerEvent' in window);
+
   class SwipeCarousel {
     handleTouchDown = (e) => {
       const event = e.originalEvent;
       const targetCarousel = $(e.currentTarget);
 
-      if (event.pointerType === 'touch') {
+      this.startTime = Date.now();
+
+      if (event.type.indexOf('touch') > -1) {
+        this.startX = event.touches[0].pageX;
+        targetCarousel
+          .off('touchmove', this.handleTouchMove)
+          .on('touchmove', this.handleTouchMove);
+      } else if (event.pointerType === 'touch') {
         this.startX = event.clientX;
-        this.startTime = Date.now();
 
         targetCarousel
           .off('pointermove', this.handleTouchMove)
@@ -29,34 +37,40 @@ const BootstrapSwipeCarousel = (() => {
     handleTouchMove = (e) => {
       const event = e.originalEvent;
       const targetCarousel = $(e.currentTarget);
+      const timeElapsedMilliSeconds = Math.max(Date.now() - this.startTime, 1);
 
-      if (event.pointerType === 'touch') {
-        const deltaX = event.clientX - this.startX;
-        const timeElapsedMilliSeconds = Math.max(Date.now() - this.startTime, 1);
-        const speedPixelPerSecond = (Math.abs(deltaX) / timeElapsedMilliSeconds) * 1000;
+      let deltaX;
 
-        if (shouldSlide(deltaX, speedPixelPerSecond, this.threshold)) {
-          const { state } = this;
-          const carouselAction = deltaX > 0 ? 'prev' : 'next';
+      if (event.type.indexOf('touch') > -1) {
+        deltaX = event.touches[0].pageX - this.startX;
+      } else if (event.pointerType === 'touch') {
+        deltaX = event.clientX - this.startX;
+      }
 
-          if (this.debounceTimer) {
-            clearTimeout(this.debounceTimer);
-          }
+      const speedPixelPerSecond = (Math.abs(deltaX) / timeElapsedMilliSeconds) * 1000;
 
-          this.debounceTimer = setTimeout(() => {
-            // Reset pointer move event waiting for next touch event
-            targetCarousel.off('pointermove', this.handleTouchMove);
+      if (shouldSlide(deltaX, speedPixelPerSecond, this.threshold)) {
+        const { state } = this;
+        const carouselAction = deltaX > 0 ? 'prev' : 'next';
 
-            // Update state with new action
-            this.setState({
-              queue: [...state.queue, {
-                action: carouselAction
-              }]
-            });
-
-            this.processCarouselSlideQueue(targetCarousel);
-          }, DEBOUNCE_TIMEOUT);
+        if (this.debounceTimer) {
+          clearTimeout(this.debounceTimer);
         }
+
+        this.debounceTimer = setTimeout(() => {
+          // Reset pointer move event waiting for next touch event
+          targetCarousel.off('pointermove', this.handleTouchMove);
+          targetCarousel.off('touchmove', this.handleTouchMove);
+
+          // Update state with new action
+          this.setState({
+            queue: [...state.queue, {
+              action: carouselAction
+            }]
+          });
+
+          this.processCarouselSlideQueue(targetCarousel);
+        }, DEBOUNCE_TIMEOUT);
       }
     }
 
@@ -133,8 +147,10 @@ const BootstrapSwipeCarousel = (() => {
 
     enable() {
       if (!this.state.enabled) {
+        const touchEventName = hasPointerEvents() ? 'pointerdown' : 'touchstart';
+
         this.carouselEl.on({
-          pointerdown: this.handleTouchDown,
+          [touchEventName]: this.handleTouchDown,
           'slide.bs.carousel': this.handleCarouselSlideStart,
           'slid.bs.carousel': this.handleCarouselSlideEnd
         });
@@ -145,8 +161,10 @@ const BootstrapSwipeCarousel = (() => {
 
     disable() {
       if (this.state.enabled) {
+        const touchEventName = hasPointerEvents() ? 'pointerdown' : 'touchstart';
+
         this.carouselEl.off({
-          pointerdown: this.handleTouchDown,
+          [touchEventName]: this.handleTouchDown,
           'slide.bs.carousel': this.handleCarouselSlideStart,
           'slid.bs.carousel': this.handleCarouselSlideEnd
         });

@@ -18,6 +18,8 @@ var _jquery2 = _interopRequireDefault(_jquery);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -32,8 +34,14 @@ var BootstrapSwipeCarousel = function () {
     return Math.abs(deltaX) >= threshold || speed > MIN_SPEED_TO_SLIDE;
   };
 
+  var hasPointerEvents = function hasPointerEvents() {
+    return 'PointerEvent' in window;
+  };
+
   var SwipeCarousel = function () {
     function SwipeCarousel(carouselEl) {
+      var _this = this;
+
       var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
           _ref$sensitivity = _ref.sensitivity,
           sensitivity = _ref$sensitivity === undefined ? 'medium' : _ref$sensitivity,
@@ -42,15 +50,88 @@ var BootstrapSwipeCarousel = function () {
 
       _classCallCheck(this, SwipeCarousel);
 
+      this.handleTouchDown = function (e) {
+        var event = e.originalEvent;
+        var targetCarousel = (0, _jquery2.default)(e.currentTarget);
+
+        _this.startTime = Date.now();
+
+        if (event.type.indexOf('touch') > -1) {
+          _this.startX = event.touches[0].pageX;
+          targetCarousel.off('touchmove', _this.handleTouchMove).on('touchmove', _this.handleTouchMove);
+        } else if (event.pointerType === 'touch') {
+          _this.startX = event.clientX;
+
+          targetCarousel.off('pointermove', _this.handleTouchMove).on('pointermove', _this.handleTouchMove);
+        }
+      };
+
+      this.handleTouchMove = function (e) {
+        var event = e.originalEvent;
+        var targetCarousel = (0, _jquery2.default)(e.currentTarget);
+        var timeElapsedMilliSeconds = Math.max(Date.now() - _this.startTime, 1);
+
+        var deltaX = void 0;
+
+        if (event.type.indexOf('touch') > -1) {
+          deltaX = event.touches[0].pageX - _this.startX;
+        } else if (event.pointerType === 'touch') {
+          deltaX = event.clientX - _this.startX;
+        }
+
+        var speedPixelPerSecond = Math.abs(deltaX) / timeElapsedMilliSeconds * 1000;
+
+        if (shouldSlide(deltaX, speedPixelPerSecond, _this.threshold)) {
+          var state = _this.state;
+
+          var carouselAction = deltaX > 0 ? 'prev' : 'next';
+
+          if (_this.debounceTimer) {
+            clearTimeout(_this.debounceTimer);
+          }
+
+          _this.debounceTimer = setTimeout(function () {
+            // Reset pointer move event waiting for next touch event
+            targetCarousel.off('pointermove', _this.handleTouchMove);
+            targetCarousel.off('touchmove', _this.handleTouchMove);
+
+            // Update state with new action
+            _this.setState({
+              queue: [].concat(_toConsumableArray(state.queue), [{
+                action: carouselAction
+              }])
+            });
+
+            _this.processCarouselSlideQueue(targetCarousel);
+          }, DEBOUNCE_TIMEOUT);
+        }
+      };
+
+      this.handleCarouselSlideStart = function () {
+        var state = _this.state;
+
+        // Remove processed first item from the queue
+
+        _this.setState({
+          sliding: true,
+          queue: state.queue.slice(1)
+        });
+      };
+
+      this.handleCarouselSlideEnd = function (e) {
+        var targetCarousel = (0, _jquery2.default)(e.target);
+
+        _this.setState({
+          sliding: false
+        });
+
+        // Check the queue in case more slides needs to happen
+        _this.processCarouselSlideQueue(targetCarousel);
+      };
+
       this.carouselEl = carouselEl;
       this.sensitivity = sensitivity;
       this.threshold = this.sensitivityToThresholdToSlide[sensitivity];
-
-      // We share these properties assuming we swipe on carousel at a given time
-      this.handleTouchMove = this.handleTouchMove.bind(this);
-      this.handleTouchDown = this.handleTouchDown.bind(this);
-      this.handleCarouselSlideStart = this.handleCarouselSlideStart.bind(this);
-      this.handleCarouselSlideEnd = this.handleCarouselSlideEnd.bind(this);
 
       this.state = {
         queue: [],
@@ -77,81 +158,6 @@ var BootstrapSwipeCarousel = function () {
         });
       }
     }, {
-      key: 'handleTouchMove',
-      value: function handleTouchMove(e) {
-        var _this = this;
-
-        var event = e.originalEvent;
-        var targetCarousel = (0, _jquery2.default)(e.currentTarget);
-
-        if (event.pointerType === 'touch') {
-          var deltaX = event.clientX - this.startX;
-          var timeElapsedMilliSeconds = Math.max(Date.now() - this.startTime, 1);
-          var speedPixelPerSecond = Math.abs(deltaX) / timeElapsedMilliSeconds * 1000;
-
-          if (shouldSlide(deltaX, speedPixelPerSecond, this.threshold)) {
-            var state = this.state;
-
-            var carouselAction = deltaX > 0 ? 'prev' : 'next';
-
-            if (this.debounceTimer) {
-              clearTimeout(this.debounceTimer);
-            }
-
-            this.debounceTimer = setTimeout(function () {
-              // Reset pointer move event waiting for next touch event
-              targetCarousel.off('pointermove', _this.handleTouchMove);
-
-              // Update state with new action
-              _this.setState({
-                queue: [].concat(_toConsumableArray(state.queue), [{
-                  action: carouselAction
-                }])
-              });
-
-              _this.processCarouselSlideQueue(targetCarousel);
-            }, DEBOUNCE_TIMEOUT);
-          }
-        }
-      }
-    }, {
-      key: 'handleTouchDown',
-      value: function handleTouchDown(e) {
-        var event = e.originalEvent;
-        var targetCarousel = (0, _jquery2.default)(e.currentTarget);
-
-        if (event.pointerType === 'touch') {
-          this.startX = event.clientX;
-          this.startTime = Date.now();
-
-          targetCarousel.off('pointermove', this.handleTouchMove).on('pointermove', this.handleTouchMove);
-        }
-      }
-    }, {
-      key: 'handleCarouselSlideStart',
-      value: function handleCarouselSlideStart() {
-        var state = this.state;
-
-        // Remove processed first item from the queue
-
-        this.setState({
-          sliding: true,
-          queue: state.queue.slice(1)
-        });
-      }
-    }, {
-      key: 'handleCarouselSlideEnd',
-      value: function handleCarouselSlideEnd(e) {
-        var targetCarousel = (0, _jquery2.default)(e.target);
-
-        this.setState({
-          sliding: false
-        });
-
-        // Check the queue in case more slides needs to happen
-        this.processCarouselSlideQueue(targetCarousel);
-      }
-    }, {
       key: 'processCarouselSlideQueue',
       value: function processCarouselSlideQueue(targetCarouselEl) {
         var queue = this.state.queue;
@@ -173,11 +179,11 @@ var BootstrapSwipeCarousel = function () {
       key: 'enable',
       value: function enable() {
         if (!this.state.enabled) {
-          this.carouselEl.on({
-            pointerdown: this.handleTouchDown,
-            'slide.bs.carousel': this.handleCarouselSlideStart,
-            'slid.bs.carousel': this.handleCarouselSlideEnd
-          });
+          var _carouselEl$on;
+
+          var touchEventName = hasPointerEvents() ? 'pointerdown' : 'touchstart';
+
+          this.carouselEl.on((_carouselEl$on = {}, _defineProperty(_carouselEl$on, touchEventName, this.handleTouchDown), _defineProperty(_carouselEl$on, 'slide.bs.carousel', this.handleCarouselSlideStart), _defineProperty(_carouselEl$on, 'slid.bs.carousel', this.handleCarouselSlideEnd), _carouselEl$on));
 
           this.toggleEnabledState();
         }
@@ -186,11 +192,11 @@ var BootstrapSwipeCarousel = function () {
       key: 'disable',
       value: function disable() {
         if (this.state.enabled) {
-          this.carouselEl.off({
-            pointerdown: this.handleTouchDown,
-            'slide.bs.carousel': this.handleCarouselSlideStart,
-            'slid.bs.carousel': this.handleCarouselSlideEnd
-          });
+          var _carouselEl$off;
+
+          var touchEventName = hasPointerEvents() ? 'pointerdown' : 'touchstart';
+
+          this.carouselEl.off((_carouselEl$off = {}, _defineProperty(_carouselEl$off, touchEventName, this.handleTouchDown), _defineProperty(_carouselEl$off, 'slide.bs.carousel', this.handleCarouselSlideStart), _defineProperty(_carouselEl$off, 'slid.bs.carousel', this.handleCarouselSlideEnd), _carouselEl$off));
 
           this.toggleEnabledState();
         }

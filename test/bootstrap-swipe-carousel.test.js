@@ -15,6 +15,7 @@ import BootstrapSwipeCarousel from'../src/bootstrap-swipe-carousel';
 describe('Bootstrap Swipe Carousel', () => {
   beforeEach(() => {
     $('body').html(getSimpleCarouselMarkup());
+    window.PointerEvent = {};
   });
 
   it('should store the swipe carousel object in element data', () => {
@@ -52,11 +53,37 @@ describe('Bootstrap Swipe Carousel', () => {
         sensitivity: 'medium' // Threshold is 8 pixels
       });
 
-      await swipeLeft(carouselEl, swipeMovePixels);
+      await swipeLeft(carouselEl, { swipeLength: swipeMovePixels});
       await wait(safeWaitTime);
 
       expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlide);
     });
+
+    describe('When pointer events are not defined', () => {
+      let cachedPointerEventConstructor;
+
+      beforeEach(() => {
+        delete window.PointerEvent;
+      });
+
+      it('should work with touch events and go to next slide', (done) => {
+        const carouselEl = $('.carousel');
+        carouselEl.carousel().swipeCarousel({
+          sensitivity: 'medium' // Threshold is 8 pixels
+        });
+
+        swipeLeft(carouselEl, { eventType: 'touch' });
+
+        carouselEl.on('slid.bs.carousel', ({from, to}) => {
+          expect(from).to.eq(0);
+          expect(to).to.eq(1);
+
+          expect(carouselEl.find('.carousel-item.active').index()).to.eq(1);
+          done();
+        });
+      });
+    })
+
   });
 
   describe('When swipe right', () => {
@@ -98,7 +125,7 @@ describe('Bootstrap Swipe Carousel', () => {
         sensitivity: 'medium' // Threshold is 8 pixels
       });
 
-      await swipeRight(carouselEl, swipeMovePixels);
+      await swipeRight(carouselEl, { swipeLength: swipeMovePixels });
       await wait(safeWaitTime);
 
       expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlideIndex);
@@ -118,7 +145,7 @@ describe('Bootstrap Swipe Carousel', () => {
 
       carouselEl.swipeCarousel('disable');
 
-      await swipeLeft(carouselEl, swipeMovePixels);
+      await swipeLeft(carouselEl, { swipeLength: swipeMovePixels });
       await wait(safeWaitTime);
       expect(carouselEl.find('.carousel-item.active').index()).to.eq(currentSlide);
     });
@@ -185,7 +212,7 @@ describe('Bootstrap Swipe Carousel', () => {
       carouselEl.on('slid.bs.carousel', slideChangeHandler);
       carouselEl.swipeCarousel('disable');
 
-      await swipeLeft(carouselEl, swipeMovePixels);
+      await swipeLeft(carouselEl, { swipeLength: swipeMovePixels});
       await wait(safeWaitTime);
       expect(slideChangeHandler).to.not.been.called;
     });

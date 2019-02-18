@@ -1,28 +1,48 @@
 import 'babel-polyfill';
 import $ from 'jquery';
 
-const swipeEvent = async (type, carouselEl, swipeLength = 20) => {
+const touchEvent = ({ type, pageX } = {}) => $.Event(`touch${type}`, {
+  originalEvent: {
+    touches: [
+      {
+        pageX
+      }
+    ],
+    type: `touch${type}`
+  }
+});
+
+
+const pointerTouchEvent = ({ type, clientX }) => $.Event( `pointer${type}`, {
+  originalEvent: {
+    clientX,
+    pointerType: 'touch',
+    type: `pointer${type}`
+  }
+});
+
+const swipeEvent = async (type, carouselEl, { swipeLength = 20, eventType = 'pointer' } = {}) => {
   const startPos = 100;
   const humanSwipeDuration = 50; // milliseconds
+  let touchStartEvent;
+  let touchMoveEvent;
 
   const swipePositions = {
     start: startPos,
     end: startPos + ((type === 'left') ? -1 : 1) * swipeLength
   };
 
-  const fakePointerDownEvent = $.Event( 'pointerdown', { originalEvent: {
-    clientX: swipePositions.start,
-    pointerType: 'touch'
-  }});
+  if (eventType === 'pointer') {
+    touchStartEvent = pointerTouchEvent({ type: 'down', clientX: swipePositions.start });
+    touchMoveEvent = pointerTouchEvent({ type: 'move', clientX: swipePositions.end });
+  } else if (eventType === 'touch') {
+    touchStartEvent = touchEvent({ type: 'start', pageX: swipePositions.start });
+    touchMoveEvent = touchEvent({ type: 'move', pageX: swipePositions.end });
+  }
 
-  const fakePointerMoveEvent = $.Event( 'pointermove', { originalEvent: {
-    clientX: swipePositions.end,
-    pointerType: 'touch'
-  }});
-
-  carouselEl.trigger(fakePointerDownEvent);
+  carouselEl.trigger(touchStartEvent);
   await wait(humanSwipeDuration);
-  return carouselEl.trigger(fakePointerMoveEvent);
+  return carouselEl.trigger(touchMoveEvent);
 };
 
 export const swipeLeft = swipeEvent.bind(null, 'left');
